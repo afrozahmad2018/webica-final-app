@@ -1,10 +1,11 @@
-name: Webica Build Final v3
+name: Webica Build Final v4
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -68,3 +69,49 @@ jobs:
           EOF
 
           # 4. Settings & Build Scripts
+          echo "rootProject.name='WebicaApp'" > settings.gradle
+          echo "include ':app'" >> settings.gradle
+
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.1.0' }
+          }
+          allprojects {
+              repositories { google(); mavenCentral() }
+          }
+          EOF
+
+          cat <<EOF > app/build.gradle
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.webica.app'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.webica.app'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          EOF
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build APK with Gradle
+        run: |
+          gradle wrapper --gradle-version 8.1.1
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Webica-Secure-App
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
